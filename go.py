@@ -3,10 +3,15 @@
 # and export it to Google Sheets
 
 from datetime import date, timedelta, datetime
+from oauth2client.service_account import ServiceAccountCredentials
 import collections
-import myfitnesspal
+import gspread
 import json
+import myfitnesspal
 import yaml
+
+def export_data(macros, worksheet):
+    print macros
 
 def calculate_macros(data):
     # print '{:.1%}'.format(carbs/total)
@@ -65,6 +70,15 @@ def get_login():
             print exc
             exit(1)
 
+def get_worksheet(login_info):
+    scope = ['https://spreadsheets.google.com/feeds']
+
+    credentials = ServiceAccountCredentials.from_json_keyfile_name('creds.json', scope)
+
+    gc = gspread.authorize(credentials)
+    worksheet = gc.open_by_url(login_info['gsheet'])
+    return worksheet
+
 def save_mfp_data(data):
     with open('mfpdata.json', 'wb') as outfile:
             json.dump(data, outfile)
@@ -78,13 +92,14 @@ def main():
 
     print "Logging in as " + login_info['username'] + "..."
     client = myfitnesspal.Client(login_info['username'], login_info['password'])
+    print "Opening google sheets worksheet..."
+    worksheet = get_worksheet(login_info)
     print "Done!"
 
     body_weights = client.get_measurements('Weight', start_date)
     data = get_data(client, start_date)
     macros = calculate_macros(data)
-    print macros
-
+    export_data(macros, worksheet)
 
 if __name__ == '__main__':
     main()
